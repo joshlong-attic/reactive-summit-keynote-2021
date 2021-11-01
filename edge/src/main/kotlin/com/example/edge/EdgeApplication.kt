@@ -18,14 +18,11 @@ import reactor.core.publisher.Mono
 import java.util.*
 
 @SpringBootApplication
-open class EdgeApplication {
+class EdgeApplication {
 
-    @Bean
-    fun httpClient(webClient: WebClient.Builder) = webClient.build()
+    @Bean fun httpClient(webClient: WebClient.Builder) = webClient.build()
 
-    @Bean
-    fun rSocketClient(rSocket: RSocketRequester.Builder) =
-        rSocket.tcp("localhost", 8181)
+    @Bean fun rSocketClient(rSocket: RSocketRequester.Builder) = rSocket.tcp("localhost", 8181)
 }
 
 fun main(args: Array<String>) {
@@ -42,12 +39,9 @@ class CrmClient(
     val rSocketClient: RSocketRequester
 ) {
 
-    fun customers(): Flux<Customer> =
-        this.httpClient.get().uri("http://localhost:8080/customers").retrieve()
-            .bodyToFlux()
+    fun customers(): Flux<Customer> = this.httpClient.get().uri("http://localhost:8080/customers").retrieve().bodyToFlux()
 
-    fun profileForCustomer(customerId: Int): Mono<Profile> =
-        this.rSocketClient.route("profiles.{cid}", customerId).retrieveMono()
+    fun profileForCustomer(customerId: Int): Mono<Profile> = this.rSocketClient.route("profiles.{cid}", customerId).retrieveMono()
 
     fun customerProfiles(): Flux<CustomerProfile> =
         this.customers()

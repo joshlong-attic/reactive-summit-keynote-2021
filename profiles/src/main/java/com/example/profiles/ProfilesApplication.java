@@ -19,6 +19,9 @@ public class ProfilesApplication {
 	}
 }
 
+record Profile(Integer id, Date registered) {
+}
+
 @Controller
 class OrderRSocketController {
 
@@ -26,7 +29,7 @@ class OrderRSocketController {
 
 	OrderRSocketController() {
 		var ctr = 0;
-		for (var customerId = 1; customerId <= 8; customerId++)	{
+		for (var customerId = 1; customerId <= 8; customerId++) {
 			ctr += 1;
 			this.db.put(customerId, new Profile(ctr, new Date()));
 		}
@@ -37,7 +40,4 @@ class OrderRSocketController {
 		var customer = this.db.get(customerId);
 		return Mono.just(customer);
 	}
-}
-
-record Profile(Integer id, Date registered) {
 }
