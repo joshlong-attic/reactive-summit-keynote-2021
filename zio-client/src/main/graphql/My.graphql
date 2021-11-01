@@ -1,0 +1,21 @@
+schema {
+  query: Queries
+}
+
+enum Role {
+  DevOps
+  SiteReliabilityEngineer
+  SoftwareDeveloper
+}
+
+type Employee {
+  name: String!
+  role: Role!
+}
+
+type Queries {
+  "Return all employees with specific role"
+  employees(role: Role!): [Employee!]!
+  "Find an employee by its name"
+  employee(name: String!): Employee
+}
