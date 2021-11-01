@@ -1,6 +1,6 @@
 package com.example.edge
 
-import kotlinx.coroutines.reactor.awaitSingle
+
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
@@ -8,7 +8,6 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.graphql.data.method.annotation.QueryMapping
 import org.springframework.graphql.data.method.annotation.SchemaMapping
 import org.springframework.messaging.rsocket.RSocketRequester
-import org.springframework.messaging.rsocket.retrieveFlux
 import org.springframework.messaging.rsocket.retrieveMono
 import org.springframework.stereotype.Component
 import org.springframework.stereotype.Controller
@@ -19,16 +18,13 @@ import reactor.core.publisher.Mono
 import java.util.*
 
 @SpringBootApplication
-class EdgeApplication
-
-@Configuration
-class EdgeConfiguration {
+open class EdgeApplication {
 
     @Bean
-    fun http(webClient: WebClient.Builder) = webClient.build()
+    fun httpClient(webClient: WebClient.Builder) = webClient.build()
 
     @Bean
-    fun rSocket(rSocket: RSocketRequester.Builder) =
+    fun rSocketClient(rSocket: RSocketRequester.Builder) =
         rSocket.tcp("localhost", 8181)
 }
 
@@ -41,11 +37,17 @@ data class Customer(val id: Int, val name: String)
 data class CustomerProfile(val customer: Customer, val profile: Profile)
 
 @Component
-class CrmClient(val http: WebClient, val rSocket: RSocketRequester) {
+class CrmClient(
+    val httpClient: WebClient,
+    val rSocketClient: RSocketRequester
+) {
 
-    fun customers(): Flux<Customer> = this.http.get().uri("http://localhost:8080/customers").retrieve().bodyToFlux()
+    fun customers(): Flux<Customer> =
+        this.httpClient.get().uri("http://localhost:8080/customers").retrieve()
+            .bodyToFlux()
 
-    fun profileForCustomer(customerId: Int): Mono<Profile> = this.rSocket.route("profiles.{cid}", customerId).retrieveMono()
+    fun profileForCustomer(customerId: Int): Mono<Profile> =
+        this.rSocketClient.route("profiles.{cid}", customerId).retrieveMono()
 
     fun customerProfiles(): Flux<CustomerProfile> =
         this.customers()
