@@ -29,7 +29,7 @@ case class Queries(
                     @GQLDescription("Find an employee by its name")
                     employee: EmployeeArgs => Option[Employee]
                   )
-object CalibanServer extends zio.App {
+object MyServer extends zio.App {
 
   val employees = List(
     Employee("Alex", Role.DevOps),
@@ -51,7 +51,7 @@ object CalibanServer extends zio.App {
 
   val myApp = for {
     interpreter <- api.interpreter
-    _ = println(api.render)
+    _ <- zio.console.putStrLn(api.render)
     _ <- Server
       .start(
         port = 8088,
