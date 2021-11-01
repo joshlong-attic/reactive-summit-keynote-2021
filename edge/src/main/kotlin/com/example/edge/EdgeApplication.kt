@@ -1,5 +1,6 @@
 package com.example.edge
 
+import kotlinx.coroutines.reactor.awaitSingle
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
@@ -8,12 +9,14 @@ import org.springframework.graphql.data.method.annotation.QueryMapping
 import org.springframework.graphql.data.method.annotation.SchemaMapping
 import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.messaging.rsocket.retrieveFlux
+import org.springframework.messaging.rsocket.retrieveMono
 import org.springframework.stereotype.Component
 import org.springframework.stereotype.Controller
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.bodyToFlux
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import java.util.*
 
 @SpringBootApplication
 class EdgeApplication
@@ -33,37 +36,38 @@ fun main(args: Array<String>) {
     runApplication<EdgeApplication>(*args)
 }
 
-data class Order(val id: Int, val customerId: Int)
+data class Profile(val id: Int, val registered: Date)
 data class Customer(val id: Int, val name: String)
-data class CustomerOrders(val customer: Customer, val orders: List<Order>)
+data class CustomerProfile(val customer: Customer, val profile: Profile)
 
 @Component
 class CrmClient(val http: WebClient, val rSocket: RSocketRequester) {
 
-    fun customers() =
-        this.http.get().uri("http://localhost:8080/customers").retrieve()
-            .bodyToFlux<Customer>()
+    fun customers(): Flux<Customer> = this.http.get().uri("http://localhost:8080/customers").retrieve().bodyToFlux()
 
-    fun ordersForCustomer(customerId: Int) =
-        this.rSocket.route("orders.{cid}", customerId).retrieveFlux<Order>()
+    fun profileForCustomer(customerId: Int): Mono<Profile> = this.rSocket.route("profiles.{cid}", customerId).retrieveMono()
 
-    fun customerOrders(): Flux<CustomerOrders> = this.customers()
-        .flatMap {
-            Mono.zip(
-                Mono.just(it),
-                ordersForCustomer(it.id).collectList()
-            )
-        }
-        .map { tuple2 -> CustomerOrders(tuple2.t1, tuple2.t2) }
+    fun customerProfiles(): Flux<CustomerProfile> =
+        this.customers()
+            .flatMap {
+                Mono.zip(
+                    Mono.just(it),
+                    profileForCustomer(it.id)
+                )
+            }
+            .map { tuple2 -> CustomerProfile(tuple2.t1, tuple2.t2) }
 
 }
 
 @Controller
 class CrmGraphQLController(val crm: CrmClient) {
 
+    @SchemaMapping(typeName = "Profile")
+    fun registered(p: Profile) = p.registered.toGMTString()
+
     @QueryMapping
     fun customers() = this.crm.customers()
 
     @SchemaMapping(typeName = "Customer")
-    fun orders(customer: Customer) = this.crm.ordersForCustomer(customer.id)
+    fun profile(customer: Customer) = this.crm.profileForCustomer(customer.id)
 }

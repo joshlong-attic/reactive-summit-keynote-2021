@@ -1,12 +1,12 @@
 type Customer {
  id: ID
  name: String
- orders: [Order]
+ profile: Profile
 }
 
-type Order {
+type Profile {
  id: ID
- customerId: ID
+ registered: String
 }
 
 type Query {

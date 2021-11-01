@@ -1,24 +1,21 @@
-package com.example.orders;
+package com.example.profiles;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.stereotype.Controller;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @SpringBootApplication
-public class OrdersApplication {
+public class ProfilesApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(OrdersApplication.class, args);
+		SpringApplication.run(ProfilesApplication.class, args);
 	}
 }
 
