@@ -1,4 +1,3 @@
-import CalibanServer.myApp
 import sttp.client3._
 import sttp.client3.asynchttpclient.zio._
 import zio.{App, ExitCode, ZIO}
