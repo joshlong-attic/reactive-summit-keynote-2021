@@ -1,14 +1,14 @@
 type Customer {
- id: ID
- name: String
- profile: Profile
+ id: ID!
+ name: String!
+ profile: Profile!
 }
 
 type Profile {
- id: ID
- registered: String
+ id: ID!
+ registered: String!
 }
 
 type Query {
- customers : [Customer]
+ customers : [Customer!]!
 }
