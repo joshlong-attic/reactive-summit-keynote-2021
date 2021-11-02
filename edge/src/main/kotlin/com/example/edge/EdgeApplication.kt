@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.graphql.data.method.annotation.QueryMapping
 import org.springframework.graphql.data.method.annotation.SchemaMapping
+import org.springframework.http.ResponseEntity
 import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.messaging.rsocket.retrieveMono
 import org.springframework.stereotype.Component
@@ -24,7 +25,8 @@ open class EdgeApplication {
     open fun httpClient(webClient: WebClient.Builder) = webClient.build()
 
     @Bean
-    open fun rSocketClient(rSocket: RSocketRequester.Builder) = rSocket.tcp("localhost", 8181)
+    open fun rSocketClient(rSocket: RSocketRequester.Builder) =
+        rSocket.tcp("localhost", 8181)
 }
 
 fun main(args: Array<String>) {
@@ -41,9 +43,12 @@ class CrmClient(
     val rSocketClient: RSocketRequester
 ) {
 
-    fun customers(): Flux<Customer> = this.httpClient.get().uri("http://localhost:8080/customers").retrieve().bodyToFlux()
+    fun customers(): Flux<Customer> =
+        this.httpClient.get().uri("http://localhost:8080/customers").retrieve()
+            .bodyToFlux()
 
-    fun profileForCustomer(customerId: Int): Mono<Profile> = this.rSocketClient.route("profiles.{cid}", customerId).retrieveMono()
+    fun profileForCustomer(customerId: Int): Mono<Profile> =
+        this.rSocketClient.route("profiles.{cid}", customerId).retrieveMono()
 
     fun customerProfiles(): Flux<CustomerProfile> =
         this.customers()
@@ -64,7 +69,14 @@ class CrmGraphQLController(val crm: CrmClient) {
     fun registered(p: Profile) = p.registered.toGMTString()
 
     @QueryMapping
-    fun customers() = this.crm.customers()
+    fun customers(): Flux<Customer> =
+        if (Math.random() > .5)
+            this.crm.customers()
+        else Flux.error {
+            IllegalAccessException(
+                "No!"
+            )
+        }
 
     @SchemaMapping(typeName = "Customer")
     fun profile(customer: Customer) = this.crm.profileForCustomer(customer.id)
