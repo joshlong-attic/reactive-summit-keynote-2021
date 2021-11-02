@@ -1,83 +1,86 @@
 package com.example.edge
 
-
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.graphql.data.method.annotation.QueryMapping
 import org.springframework.graphql.data.method.annotation.SchemaMapping
-import org.springframework.http.ResponseEntity
 import org.springframework.messaging.rsocket.RSocketRequester
-import org.springframework.messaging.rsocket.retrieveMono
+import org.springframework.messaging.rsocket.retrieveAndAwait
 import org.springframework.stereotype.Component
 import org.springframework.stereotype.Controller
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.ResponseBody
 import org.springframework.web.reactive.function.client.WebClient
+import org.springframework.web.reactive.function.client.bodyToFlow
 import org.springframework.web.reactive.function.client.bodyToFlux
 import reactor.core.publisher.Flux
-import reactor.core.publisher.Mono
 import java.util.*
 
 @SpringBootApplication
-open class EdgeApplication {
-
-    @Bean
-    open fun httpClient(webClient: WebClient.Builder) = webClient.build()
-
-    @Bean
-    open fun rSocketClient(rSocket: RSocketRequester.Builder) =
-        rSocket.tcp("localhost", 8181)
-}
+class EdgeApplication
 
 fun main(args: Array<String>) {
     runApplication<EdgeApplication>(*args)
 }
 
-data class Profile(val id: Int, val registered: Date)
 data class Customer(val id: Int, val name: String)
+data class Profile(val id: Int, val registered: Date)
 data class CustomerProfile(val customer: Customer, val profile: Profile)
+
+@Configuration
+class CrmConfiguration {
+
+    @Bean
+    fun rsocket(rsb: RSocketRequester.Builder) = rsb.tcp("localhost", 8181)
+
+    @Bean
+    fun http(wcb: WebClient.Builder) = wcb.build()
+}
 
 @Component
 class CrmClient(
-    val httpClient: WebClient,
-    val rSocketClient: RSocketRequester
+    private val http: WebClient,
+    private val rsocket: RSocketRequester
 ) {
 
-    fun customers(): Flux<Customer> =
-        this.httpClient.get().uri("http://localhost:8080/customers").retrieve()
-            .bodyToFlux()
+    suspend fun customers(): Flow<Customer> =
+        this.http.get().uri("http://localhost:8080/customers").retrieve()
+            .bodyToFlow()
 
-    fun profileForCustomer(customerId: Int): Mono<Profile> =
-        this.rSocketClient.route("profiles.{cid}", customerId).retrieveMono()
+    suspend fun profileFor(customerId: Int): Profile =
+        this.rsocket.route("profiles.{cid}", customerId)
+            .retrieveAndAwait()
 
-    fun customerProfiles(): Flux<CustomerProfile> =
+    suspend fun customerProfiles(): Flow<CustomerProfile> =
         this.customers()
-            .flatMap {
-                Mono.zip(
-                    Mono.just(it),
-                    profileForCustomer(it.id)
-                )
+            .map { customer ->
+                val profile = this.profileFor(customer.id)
+                CustomerProfile(customer, profile)
             }
-            .map { tuple2 -> CustomerProfile(tuple2.t1, tuple2.t2) }
 
 }
 
 @Controller
-class CrmGraphQLController(val crm: CrmClient) {
+class CrmGraphqlController(private val crm: CrmClient) {
 
     @SchemaMapping(typeName = "Profile")
-    fun registered(p: Profile) = p.registered.toGMTString()
-
-    @QueryMapping
-    fun customers(): Flux<Customer> =
-        if (Math.random() > .5)
-            this.crm.customers()
-        else Flux.error {
-            IllegalAccessException(
-                "No!"
-            )
-        }
+    fun registered(p: Profile): String = p.registered.toGMTString()
 
     @SchemaMapping(typeName = "Customer")
-    fun profile(customer: Customer) = this.crm.profileForCustomer(customer.id)
+    suspend fun profile(c: Customer) = this.crm.profileFor(c.id)
+
+    @QueryMapping
+    suspend fun customers() = this.crm.customers()
+}
+
+@Controller
+@ResponseBody
+class CrmRestController(private val crm: CrmClient) {
+
+    @GetMapping("/cos")
+    suspend fun customerProfiles() = this.crm.customerProfiles()
 }
