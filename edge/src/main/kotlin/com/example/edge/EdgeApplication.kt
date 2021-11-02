@@ -18,11 +18,13 @@ import reactor.core.publisher.Mono
 import java.util.*
 
 @SpringBootApplication
-class EdgeApplication {
+open class EdgeApplication {
 
-    @Bean fun httpClient(webClient: WebClient.Builder) = webClient.build()
+    @Bean
+    open fun httpClient(webClient: WebClient.Builder) = webClient.build()
 
-    @Bean fun rSocketClient(rSocket: RSocketRequester.Builder) = rSocket.tcp("localhost", 8181)
+    @Bean
+    open fun rSocketClient(rSocket: RSocketRequester.Builder) = rSocket.tcp("localhost", 8181)
 }
 
 fun main(args: Array<String>) {
